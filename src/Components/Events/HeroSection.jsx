@@ -2,12 +2,30 @@ import React, { useState, useEffect, useRef } from "react";
 import "./HeroSection.css";
 import heading from "../../assets/EventsHeading.webp";
 
-// Lazy video URLs
-// creates a loader for each MP4 instead of loading all of them immediately.
+// ---------------------------------------------------------
+// VIDEO FILES
+// ---------------------------------------------------------
+
 const videoModules = import.meta.glob("../../assets/*.mp4", {
   query: "?url",
   import: "default",
 });
+
+
+// ---------------------------------------------------------
+// STATIC PNG FILES
+// ---------------------------------------------------------
+
+const imageModules = import.meta.glob("../../assets/*.png", {
+  query: "?url",
+  import: "default",
+  eager: true,
+});
+
+
+// ---------------------------------------------------------
+// ORDER OF HEXAGONS
+// ---------------------------------------------------------
 
 const ORDER = [
   "(5)",
@@ -21,12 +39,54 @@ const ORDER = [
   "(13)",
 ];
 
+
+// ---------------------------------------------------------
+// VIDEO PATHS
+// ---------------------------------------------------------
+
 const videoPaths = ORDER.map(
   (name) => `../../assets/Untitled design ${name}.mp4`
 );
 
 
-// Loads a video only when the hexagon becomes visible.
+// ---------------------------------------------------------
+// IMAGE PATHS
+// ---------------------------------------------------------
+
+const imagePaths = [
+  "../../assets/5.png",
+  "../../assets/6.png",
+  "../../assets/7.png",
+  "../../assets/8.png",
+  "../../assets/9.png",
+  "../../assets/14.png",
+  "../../assets/11.png",
+  "../../assets/12.png",
+  "../../assets/13.png",
+];
+
+
+// ---------------------------------------------------------
+// GET STATIC IMAGE
+// ---------------------------------------------------------
+
+function getImageSrc(path) {
+  const image = imageModules[path];
+
+  if (!image) {
+    console.error("IMAGE NOT FOUND:", path);
+    console.log("Available PNG files:", Object.keys(imageModules));
+    return null;
+  }
+
+  return image;
+}
+
+
+// ---------------------------------------------------------
+// LAZY VIDEO LOADER
+// ---------------------------------------------------------
+
 function useLazyVideo(path, shouldLoad) {
   const [src, setSrc] = useState(null);
 
@@ -36,7 +96,8 @@ function useLazyVideo(path, shouldLoad) {
     const importer = videoModules[path];
 
     if (!importer) {
-      console.error("Video not found:", path);
+      console.error("VIDEO NOT FOUND:", path);
+      console.log("Available MP4 files:", Object.keys(videoModules));
       return;
     }
 
@@ -49,7 +110,7 @@ function useLazyVideo(path, shouldLoad) {
         }
       })
       .catch((error) => {
-        console.error("Failed to load video:", path, error);
+        console.error("FAILED TO LOAD VIDEO:", path, error);
       });
 
     return () => {
@@ -61,17 +122,53 @@ function useLazyVideo(path, shouldLoad) {
 }
 
 
-// One individual hexagon.
-function HexCell({ path, x, y }) {
+// ---------------------------------------------------------
+// ONE HEXAGON
+// ---------------------------------------------------------
+
+function HexCell({
+  path,
+  imagePath,
+  x,
+  y,
+  isMobile,
+}) {
   const wrapperRef = useRef(null);
   const videoRef = useRef(null);
 
+  // Is the hexagon visible on screen?
   const [isVisible, setIsVisible] = useState(false);
 
-  const videoSrc = useLazyVideo(path, isVisible);
+  // Is the mouse hovering over the hexagon?
+  const [isHovered, setIsHovered] = useState(false);
 
 
-  // Detect when this particular hexagon enters/leaves the screen.
+  // -------------------------------------------------------
+  // STATIC IMAGE
+  // -------------------------------------------------------
+
+  const imageSrc = getImageSrc(imagePath);
+
+
+  // -------------------------------------------------------
+  // DECIDE WHEN VIDEO SHOULD LOAD
+  // -------------------------------------------------------
+
+  const shouldLoadVideo = isMobile
+    ? isVisible
+    : isHovered;
+
+
+  const videoSrc = useLazyVideo(
+    path,
+    shouldLoadVideo
+  );
+
+
+  // -------------------------------------------------------
+  // INTERSECTION OBSERVER
+  // -------------------------------------------------------
+
   useEffect(() => {
     const element = wrapperRef.current;
 
@@ -83,7 +180,10 @@ function HexCell({ path, x, y }) {
       },
       {
         threshold: 0.01,
-        rootMargin: "300px",
+
+        // Use 0px if you want the video to start
+        // only when the hexagon actually enters the screen.
+        rootMargin: "0px",
       }
     );
 
@@ -95,140 +195,303 @@ function HexCell({ path, x, y }) {
   }, []);
 
 
-  // Play while visible and pause when it leaves the screen.
+  // -------------------------------------------------------
+  // PLAY / PAUSE VIDEO
+  // -------------------------------------------------------
+
   useEffect(() => {
     const video = videoRef.current;
 
     if (!video || !videoSrc) return;
 
-    if (isVisible) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
-  }, [isVisible, videoSrc]);
 
+    if (isMobile) {
+      // MOBILE
+      // Play whenever the hexagon is visible.
+
+      if (isVisible) {
+        video.play().catch((error) => {
+          console.log("Mobile video play blocked:", error);
+        });
+      } else {
+        video.pause();
+      }
+
+    } else {
+      // DESKTOP
+      // Play ONLY while hovering.
+
+      if (isHovered) {
+        video.play().catch((error) => {
+          console.log("Desktop video play blocked:", error);
+        });
+      } else {
+        video.pause();
+      }
+    }
+
+  }, [
+    isMobile,
+    isVisible,
+    isHovered,
+    videoSrc,
+  ]);
+
+
+  // -------------------------------------------------------
+  // HEXAGON
+  // -------------------------------------------------------
 
   return (
     <div
       ref={wrapperRef}
+
       className="hexagon-wrapper video"
+
       style={{
         "--hex-x": x,
         "--hex-y": y,
       }}
+
+      onMouseEnter={() => {
+        if (!isMobile) {
+          setIsHovered(true);
+        }
+      }}
+
+      onMouseLeave={() => {
+        if (!isMobile) {
+          setIsHovered(false);
+        }
+      }}
     >
+
+      {/* Existing golden border */}
       <div className="hexagon-border"></div>
 
+
       <div className="hexagon-inner">
-        {videoSrc ? (
+
+        {/* ------------------------------------------------
+            STATIC PNG
+        ------------------------------------------------- */}
+
+        {imageSrc && (
+          <img
+            src={imageSrc}
+            alt=""
+            className="hexagon-static-image"
+          />
+        )}
+
+
+        {/* ------------------------------------------------
+            VIDEO
+        ------------------------------------------------- */}
+
+        {videoSrc && (
           <video
             ref={videoRef}
+
             src={videoSrc}
+
             loop
             muted
             playsInline
+
             preload="auto"
+
             disablePictureInPicture
-            className="hexagon-video"
+
+            className={
+              isMobile
+                ? `hexagon-video ${
+                    isVisible ? "video-visible" : ""
+                  }`
+                : `hexagon-video ${
+                    isHovered ? "video-visible" : ""
+                  }`
+            }
           />
-        ) : (
-          <div className="plain-bg">
-            <div className="plain-dot top-dot"></div>
-            <div className="plain-dot bottom-dot"></div>
-          </div>
         )}
+
       </div>
     </div>
   );
 }
 
 
+// ---------------------------------------------------------
+// HERO SECTION
+// ---------------------------------------------------------
+
 export default function HeroSection() {
+
   const [isMobile, setIsMobile] = useState(false);
 
+
+  // -------------------------------------------------------
+  // CHECK SCREEN SIZE
+  // -------------------------------------------------------
+
   useEffect(() => {
+
     const handleResize = () => {
-      // Switch to honeycomb at 768px and below
-      setIsMobile(window.innerWidth <= 768);
+
+      setIsMobile(
+        window.innerWidth <= 768
+      );
+
     };
 
     handleResize();
 
-    window.addEventListener("resize", handleResize);
+    window.addEventListener(
+      "resize",
+      handleResize
+    );
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+
+      window.removeEventListener(
+        "resize",
+        handleResize
+      );
+
     };
+
   }, []);
+
+
+  // -------------------------------------------------------
+  // DESKTOP CIRCLE START ANGLE
+  // -------------------------------------------------------
 
   const START_ANGLE = -Math.PI / 2;
 
 
-  const honeycombPositions = videoPaths.map((path, index) => {
-    let x;
-    let y;
+  // -------------------------------------------------------
+  // CREATE HEXAGON POSITIONS
+  // -------------------------------------------------------
+
+  const honeycombPositions = videoPaths.map(
+    (path, index) => {
+
+      let x;
+      let y;
 
 
-    if (isMobile) {
-      // MOBILE: 1-2-3-2-1 Diamond Grid Base Coordinates
-      const mobileGrid = [
-        { x: 0, y: -2 },
+      if (isMobile) {
 
-        { x: -1, y: -1 },
-        { x: 1, y: -1 },
+        // -----------------------------------------------
+        // MOBILE
+        // 1 - 2 - 3 - 2 - 1
+        // -----------------------------------------------
 
-        { x: -2, y: 0 },
-        { x: 0, y: 0 },
-        { x: 2, y: 0 },
+        const mobileGrid = [
 
-        { x: -1, y: 1 },
-        { x: 1, y: 1 },
+          { x: 0, y: -2 },
 
-        { x: 0, y: 2 },
-      ];
+          { x: -1, y: -1 },
+          { x: 1, y: -1 },
 
-      x = mobileGrid[index].x;
-      y = mobileGrid[index].y;
-    } else {
-      // DESKTOP & TABLET: Normalized Elliptical Coordinates (-1 to 1)
-      const angle =
-        START_ANGLE +
-        (index / videoPaths.length) * (2 * Math.PI);
+          { x: -2, y: 0 },
+          { x: 0, y: 0 },
+          { x: 2, y: 0 },
 
-      x = Math.cos(angle);
-      y = Math.sin(angle);
+          { x: -1, y: 1 },
+          { x: 1, y: 1 },
+
+          { x: 0, y: 2 },
+
+        ];
+
+
+        x = mobileGrid[index].x;
+        y = mobileGrid[index].y;
+
+      } else {
+
+        // -----------------------------------------------
+        // DESKTOP / TABLET
+        // -----------------------------------------------
+
+        const angle =
+          START_ANGLE +
+          (index / videoPaths.length) *
+            (2 * Math.PI);
+
+
+        x = Math.cos(angle);
+        y = Math.sin(angle);
+
+      }
+
+
+      return {
+
+        id: index + 1,
+
+        videoPath: path,
+
+        imagePath: imagePaths[index],
+
+        x,
+
+        y,
+
+      };
+
     }
+  );
 
 
-    return {
-      id: index + 1,
-      videoPath: path,
-      x,
-      y,
-    };
-  });
+  // -------------------------------------------------------
+  // RENDER
+  // -------------------------------------------------------
 
   return (
+
     <section className="hero">
+
       <div className="hero-center-content">
+
         <img
           src={heading}
           alt="Events Heading"
           className="events-heading"
         />
+
       </div>
 
+
       <div className="hexagon-container">
-        {honeycombPositions.map((hex) => (
-          <HexCell
-            key={hex.id}
-            path={hex.videoPath}
-            x={hex.x}
-            y={hex.y}
-          />
-        ))}
+
+        {honeycombPositions.map(
+          (hex) => (
+
+            <HexCell
+
+              key={hex.id}
+
+              path={hex.videoPath}
+
+              imagePath={hex.imagePath}
+
+              x={hex.x}
+
+              y={hex.y}
+
+              isMobile={isMobile}
+
+            />
+
+          )
+        )}
+
       </div>
+
     </section>
+
   );
 }

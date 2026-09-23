@@ -1,6 +1,6 @@
 /* =========================================
    HERO COMPONENT STYLES
-   ========================================= */
+========================================= */
 
 .hero {
   /* 🎛️ THE CONTROL PANEL 🎛️ */
@@ -8,7 +8,7 @@
   /* 1. Layout & Positioning */
   --navbar-height: 80px;
   --hero-height: 100vh;
-  --center-offset-y: 34px; 
+  --center-offset-y: 34px;
   --heading-top-position: calc(50% + var(--center-offset-y));
   --container-top-position: calc(50% + var(--center-offset-y));
 
@@ -17,184 +17,435 @@
   --heading-height: clamp(150px, 30vh, 350px);
   --heading-shadow: drop-shadow(0 0 15px #e6daada4);
 
-  /* 3. Hexagon Base Sizing (Responsive across all screens) */
+  /* 3. Hexagon Base Sizing */
   --hex-width: clamp(100px, 15vw, 220px);
   --hex-height: clamp(85px, 13vw, 200px);
-  
-  /* 4. Layout Spread / Gap Control (Dynamically pulls elements closer on smaller screens) */
-  --spread-x: clamp(200px, 33vw, 450px); 
+
+  /* 4. Layout Spread / Gap Control */
+  --spread-x: clamp(200px, 33vw, 450px);
   --spread-y: clamp(120px, 18vw, 280px);
 
   /* 5. Hexagon Borders & Shapes */
   --hex-border-thickness: clamp(2px, 0.4vmin, 4px);
-  --hex-shape: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  
+
+  --hex-shape: polygon(
+    50% 0%,
+    100% 25%,
+    100% 75%,
+    50% 100%,
+    0% 75%,
+    0% 25%
+  );
+
   /* 6. Animations & Shadows */
   --hex-transition-speed: 0.4s;
   --hex-hover-scale: scale(1.15);
-  --hex-shadow-normal: drop-shadow(0 0 8px #e6daad6e);
-  --hex-shadow-hover: drop-shadow(0 0 20px #e6daad);
-  --hex-border-gradient: linear-gradient(145deg, #e6daad, #c8b675, #ddbd4b, #514b37);
+
+  --hex-shadow-normal:
+    drop-shadow(0 0 8px #e6daad6e);
+
+  --hex-shadow-hover:
+    drop-shadow(0 0 20px #e6daad);
+
+  --hex-border-gradient:
+    linear-gradient(
+      145deg,
+      #e6daad,
+      #c8b675,
+      #ddbd4b,
+      #514b37
+    );
+
   --hex-inner-bg: #1a0b2e;
 
   /* 7. Background & Ornaments */
-  --plain-bg-gradient: radial-gradient(circle at center, #3c1053, #150529);
+  --plain-bg-gradient:
+    radial-gradient(
+      circle at center,
+      #3c1053,
+      #150529
+    );
+
   --dot-size: 4px;
   --dot-color: #e6daad;
   --dot-shadow: 0 0 5px var(--dot-color);
-  --dot-offset: 15%; 
+  --dot-offset: 15%;
 
-  /* --- Base Hero Styles --- */
+
+  /* -----------------------------------------
+     BASE HERO STYLES
+  ----------------------------------------- */
+
   position: relative;
+
   width: 100%;
   height: var(--hero-height);
+
   padding-top: var(--navbar-height);
+
   box-sizing: border-box;
+
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  overflow: hidden; 
+
+  overflow: hidden;
+
   display: flex;
+
   background: transparent;
 }
 
+
+/* =========================================
+   CENTER HEADING
+========================================= */
+
 .hero-center-content {
   position: absolute;
-  top: var(--heading-top-position); 
+
+  top: var(--heading-top-position);
   left: 50%;
+
   transform: translate(-50%, -50%);
+
   z-index: 10;
+
   display: flex;
+
   justify-content: center;
   align-items: center;
+
   pointer-events: none;
-  transition: top 0.4s ease; 
-}
 
-.events-heading {
-  width: auto;
-  max-width: var(--heading-width);
-  max-height: var(--heading-height);
-  object-fit: contain;
-  filter: var(--heading-shadow);
-}
-
-.hexagon-container {
-  position: absolute;
-  top: var(--container-top-position); 
-  left: 50%;
-  width: 0;
-  height: 0;
-  z-index: 5;
   transition: top 0.4s ease;
 }
 
+
+.events-heading {
+  width: auto;
+
+  max-width: var(--heading-width);
+  max-height: var(--heading-height);
+
+  object-fit: contain;
+
+  filter: var(--heading-shadow);
+}
+
+
+/* =========================================
+   HEXAGON CONTAINER
+========================================= */
+
+.hexagon-container {
+  position: absolute;
+
+  top: var(--container-top-position);
+  left: 50%;
+
+  width: 0;
+  height: 0;
+
+  z-index: 5;
+
+  transition: top 0.4s ease;
+}
+
+
+/* =========================================
+   HEXAGON WRAPPER
+========================================= */
+
 .hexagon-wrapper {
   position: absolute;
-  width: var(--hex-width); 
+
+  width: var(--hex-width);
   height: var(--hex-height);
-  /* The spread logic is multiplied here dynamically */
-  transform: translate(-50%, -50%) translate(calc(var(--hex-x) * var(--spread-x)), calc(var(--hex-y) * var(--spread-y)));
+
+  transform:
+    translate(-50%, -50%)
+    translate(
+      calc(var(--hex-x) * var(--spread-x)),
+      calc(var(--hex-y) * var(--spread-y))
+    );
+
   filter: var(--hex-shadow-normal);
-  transition: transform var(--hex-transition-speed) cubic-bezier(0.175, 0.885, 0.32, 1.275), filter var(--hex-transition-speed) ease;
+
+  transition:
+    transform var(--hex-transition-speed)
+      cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    filter var(--hex-transition-speed) ease;
+
   z-index: 10;
+
   cursor: pointer;
+
   will-change: transform;
 }
 
+
+/* =========================================
+   DESKTOP HOVER
+========================================= */
+
 .hexagon-wrapper:hover {
-  transform: translate(-50%, -50%) translate(calc(var(--hex-x) * var(--spread-x)), calc(var(--hex-y) * var(--spread-y))) var(--hex-hover-scale);
+  transform:
+    translate(-50%, -50%)
+    translate(
+      calc(var(--hex-x) * var(--spread-x)),
+      calc(var(--hex-y) * var(--spread-y))
+    )
+    var(--hex-hover-scale);
+
   filter: var(--hex-shadow-hover);
+
   z-index: 20;
 }
+
+
+/* =========================================
+   GOLD HEXAGON BORDER
+========================================= */
 
 .hexagon-border {
   width: 100%;
   height: 100%;
+
   clip-path: var(--hex-shape);
+
   background: var(--hex-border-gradient);
+
   position: absolute;
+
   top: 0;
   left: 0;
+
+  z-index: 1;
+
+  pointer-events: none;
 }
+
+
+/* =========================================
+   HEXAGON INNER AREA
+========================================= */
 
 .hexagon-inner {
   position: absolute;
+
   top: var(--hex-border-thickness);
   left: var(--hex-border-thickness);
   right: var(--hex-border-thickness);
   bottom: var(--hex-border-thickness);
+
   clip-path: var(--hex-shape);
+
   background-color: var(--hex-inner-bg);
+
   display: flex;
+
   justify-content: center;
   align-items: center;
+
   overflow: hidden;
+
+  z-index: 2;
 }
 
-.hexagon-video {
+
+/* =========================================
+   STATIC PNG IMAGE
+========================================= */
+
+.hexagon-static-image {
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
   width: 100%;
   height: 100%;
+
   object-fit: cover;
+
+  display: block;
+
+  z-index: 1;
+
+  opacity: 1;
+
+  pointer-events: none;
 }
+
+
+/* =========================================
+   VIDEO
+========================================= */
+
+.hexagon-video {
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+
+  z-index: 2;
+
+  /*
+    Video is hidden initially.
+    React adds .video-visible when:
+    - Desktop: hovered
+    - Mobile: visible on screen
+  */
+  opacity: 0;
+
+  pointer-events: none;
+
+  transition: opacity 0.2s ease;
+}
+
+
+/* =========================================
+   ACTIVE VIDEO
+========================================= */
+
+.hexagon-video.video-visible {
+  opacity: 1;
+}
+
+
+/* =========================================
+   OLD PLAIN BACKGROUND
+   Kept in case it is used somewhere else.
+========================================= */
 
 .plain-bg {
   width: 100%;
   height: 100%;
+
   background: var(--plain-bg-gradient);
+
   position: relative;
+
   display: flex;
+
   justify-content: center;
   align-items: center;
 }
 
+
 .plain-dot {
   position: absolute;
+
   width: var(--dot-size);
   height: var(--dot-size);
+
   border-radius: 50%;
+
   background-color: var(--dot-color);
+
   box-shadow: var(--dot-shadow);
 }
 
-.top-dot { top: var(--dot-offset); }
-.bottom-dot { bottom: var(--dot-offset); }
+
+.top-dot {
+  top: var(--dot-offset);
+}
+
+
+.bottom-dot {
+  bottom: var(--dot-offset);
+}
+
 
 /* =========================================
-   💻 TABLET RESPONSIVENESS (Fixes Screen Leaking)
-   ========================================= */
+   💻 TABLET RESPONSIVENESS
+========================================= */
+
 @media (max-width: 1024px) {
+
   .hero {
-    /* Pulls the ring noticeably tighter to prevent overflow */
+
+    /* Pull ring tighter */
     --spread-x: 34vw;
     --spread-y: 22vw;
-    
-    /* Safely shrinks the shapes to match the tighter ring */
+
+    /* Shrink hexagons */
     --hex-width: clamp(90px, 15vw, 150px);
     --hex-height: clamp(80px, 14vw, 130px);
   }
+
 }
 
+
 /* =========================================
-   📱 MOBILE RESPONSIVENESS (Diamond Stack)
-   ========================================= */
+   📱 MOBILE RESPONSIVENESS
+========================================= */
+
 @media (max-width: 768px) {
+
   .hero {
-    --heading-top-position: 15%; 
-    --container-top-position: 58%; 
-    --heading-width: clamp(200px, 65vw, 300px);
-    
-    /* Gaps between diamond grid items. Keeps everything inside 100vw */
-    --spread-x: 16vw; 
-    --spread-y: 26vw; 
-    
-    --hex-width: clamp(70px, 28vw, 110px);
-    --hex-height: clamp(90px, 32vw, 140px);
+
+    --heading-top-position: 15%;
+
+    --container-top-position: 58%;
+
+    --heading-width:
+      clamp(200px, 65vw, 300px);
+
+    /* Diamond grid spacing */
+    --spread-x: 16vw;
+    --spread-y: 26vw;
+
+    /* Mobile hexagon size */
+    --hex-width:
+      clamp(70px, 28vw, 110px);
+
+    --hex-height:
+      clamp(90px, 32vw, 140px);
   }
 
-  /* Removes 'sticky' touch hovering issues on mobile */
+
+  /*
+    Remove hover scaling on mobile.
+
+    This is important because phones do not have
+    normal mouse hover behavior.
+  */
+
   .hexagon-wrapper:hover {
-    transform: translate(-50%, -50%) translate(calc(var(--hex-x) * var(--spread-x)), calc(var(--hex-y) * var(--spread-y)));
+
+    transform:
+      translate(-50%, -50%)
+      translate(
+        calc(var(--hex-x) * var(--spread-x)),
+        calc(var(--hex-y) * var(--spread-y))
+      );
+
     filter: var(--hex-shadow-normal);
+
     z-index: 10;
   }
+
+
+  /*
+    Make sure the video can cover the entire
+    mobile hexagon.
+  */
+
+  .hexagon-static-image,
+  .hexagon-video {
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+  }
+
 }
