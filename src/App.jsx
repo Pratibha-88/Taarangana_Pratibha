@@ -1,6 +1,6 @@
-import React from 'react';
-// 1. Change BrowserRouter to HashRouter here:
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+
 import HomePage from './Pages/Home/Home';
 import ItineraryPage from './Pages/Itinerary/Itinerary';
 import TeamPage from './Pages/Team/Team';
@@ -9,9 +9,27 @@ import Sponsi from './Pages/Sponsi/Sponsi';
 
 import './index.css';
 
+const eventImages = [
+  './assets/5.png',
+  './assets/6.png',
+  './assets/7.png',
+  './assets/8.png',
+  './assets/9.png',
+  './assets/14.png',
+  './assets/11.png',
+  './assets/12.png',
+  './assets/13.png',
+];
+
 function App() {
+  useEffect(() => {
+    eventImages.forEach((src) => {
+      const image = new Image();
+      image.src = src;
+    });
+  }, []);
+
   return (
-    // 2. Change the wrapper components to HashRouter here:
     <HashRouter>
       <div className="App">
         <Routes>
