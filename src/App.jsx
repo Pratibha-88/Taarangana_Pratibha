@@ -9,16 +9,27 @@ import Sponsi from './Pages/Sponsi/Sponsi';
 
 import './index.css';
 
+// Import images through Vite
+import image5 from './assets/5.png';
+import image6 from './assets/6.png';
+import image7 from './assets/7.png';
+import image8 from './assets/8.png';
+import image9 from './assets/9.png';
+import image14 from './assets/14.png';
+import image11 from './assets/11.png';
+import image12 from './assets/12.png';
+import image13 from './assets/13.png';
+
 const eventImages = [
-  './assets/5.png',
-  './assets/6.png',
-  './assets/7.png',
-  './assets/8.png',
-  './assets/9.png',
-  './assets/14.png',
-  './assets/11.png',
-  './assets/12.png',
-  './assets/13.png',
+  image5,
+  image6,
+  image7,
+  image8,
+  image9,
+  image14,
+  image11,
+  image12,
+  image13,
 ];
 
 function App() {

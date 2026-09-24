@@ -16,7 +16,17 @@ const imageModules = import.meta.glob("../../assets/*.png", {
 });
 
 // Hexagon order
-const ORDER = ["(5)", "(6)", "(7)", "(8)", "(9)", "(14)", "(11)", "(12)", "(13)"];
+const ORDER = [
+  "(5)",
+  "(6)",
+  "(7)",
+  "(8)",
+  "(9)",
+  "(14)",
+  "(11)",
+  "(12)",
+  "(13)",
+];
 
 // Video paths
 const videoPaths = ORDER.map(
@@ -36,6 +46,31 @@ const imagePaths = [
   "../../assets/13.png",
 ];
 
+/*
+  Image position → Rasa event ID
+
+  5.png  → Lilac Dreams           → ID 6
+  6.png  → Nukkad Natak           → ID 3
+  7.png  → Rangmancha             → ID 9
+  8.png  → Urban Thump            → ID 8
+  9.png  → Mr. & Ms. Taarangana   → ID 7
+  14.png → Slam Poetry            → ID 4
+  11.png → Antra                  → ID 1
+  12.png → Rap Battle             → ID 2
+  13.png → Aalap                  → ID 5
+*/
+const rasaIdMap = {
+  "../../assets/5.png": 6,
+  "../../assets/6.png": 3,
+  "../../assets/7.png": 9,
+  "../../assets/8.png": 8,
+  "../../assets/9.png": 7,
+  "../../assets/14.png": 4,
+  "../../assets/11.png": 1,
+  "../../assets/12.png": 2,
+  "../../assets/13.png": 5,
+};
+
 // Get image URL
 function getImageSrc(path) {
   const image = imageModules[path];
@@ -49,47 +84,35 @@ function getImageSrc(path) {
   return image;
 }
 
-// Load all videos in the background
-function preloadAllVideos() {
-  videoPaths.forEach((path) => {
-    const importer = videoModules[path];
-
-    if (!importer) {
-      console.error("VIDEO NOT FOUND:", path);
-      return;
-    }
-
-    importer()
-      .then((url) => {
-        const video = document.createElement("video");
-        video.preload = "auto";
-        video.muted = true;
-        video.playsInline = true;
-        video.src = url;
-        video.load();
-      })
-      .catch((error) => {
-        console.error("FAILED TO PRELOAD VIDEO:", path, error);
-      });
-  });
-}
-
 // One hexagon
-function HexCell({ videoSrc, imagePath, x, y, isMobile }) {
+function HexCell({
+  videoSrc,
+  imagePath,
+  x,
+  y,
+  isMobile,
+  eventId,
+}) {
   const wrapperRef = useRef(null);
   const videoRef = useRef(null);
+
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
   const imageSrc = getImageSrc(imagePath);
 
   // Check if hexagon is visible
   useEffect(() => {
     const element = wrapperRef.current;
+
     if (!element) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => setIsVisible(entry.isIntersecting),
-      { threshold: 0.01, rootMargin: "0px" }
+      {
+        threshold: 0.01,
+        rootMargin: "0px",
+      }
     );
 
     observer.observe(element);
@@ -100,6 +123,7 @@ function HexCell({ videoSrc, imagePath, x, y, isMobile }) {
   // Play or pause video
   useEffect(() => {
     const video = videoRef.current;
+
     if (!video || !videoSrc) return;
 
     if (isMobile) {
@@ -121,16 +145,32 @@ function HexCell({ videoSrc, imagePath, x, y, isMobile }) {
     }
   }, [isMobile, isVisible, isHovered, videoSrc]);
 
+  // Handle event click
+  const handleClick = () => {
+    window.dispatchEvent(
+      new CustomEvent("open-rasa", {
+        detail: {
+          id: eventId,
+        },
+      })
+    );
+  };
+
   return (
     <div
       ref={wrapperRef}
       className="hexagon-wrapper video"
       style={{ "--hex-x": x, "--hex-y": y }}
+      onClick={handleClick}
       onMouseEnter={() => {
-        if (!isMobile) setIsHovered(true);
+        if (!isMobile) {
+          setIsHovered(true);
+        }
       }}
       onMouseLeave={() => {
-        if (!isMobile) setIsHovered(false);
+        if (!isMobile) {
+          setIsHovered(false);
+        }
       }}
     >
       <div className="hexagon-border"></div>
@@ -155,8 +195,12 @@ function HexCell({ videoSrc, imagePath, x, y, isMobile }) {
             disablePictureInPicture
             className={
               isMobile
-                ? `hexagon-video ${isVisible ? "video-visible" : ""}`
-                : `hexagon-video ${isHovered ? "video-visible" : ""}`
+                ? `hexagon-video ${
+                    isVisible ? "video-visible" : ""
+                  }`
+                : `hexagon-video ${
+                    isHovered ? "video-visible" : ""
+                  }`
             }
           />
         )}
@@ -177,9 +221,12 @@ export default function HeroSection() {
     };
 
     handleResize();
+
     window.addEventListener("resize", handleResize);
 
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   // Get all video URLs when Events page opens
@@ -199,13 +246,20 @@ export default function HeroSection() {
           try {
             return await importer();
           } catch (error) {
-            console.error("FAILED TO LOAD VIDEO:", path, error);
+            console.error(
+              "FAILED TO LOAD VIDEO:",
+              path,
+              error
+            );
+
             return null;
           }
         })
       );
 
-      if (!cancelled) setLoadedVideos(videos);
+      if (!cancelled) {
+        setLoadedVideos(videos);
+      }
     };
 
     loadVideos();
@@ -223,10 +277,12 @@ export default function HeroSection() {
       if (!url) return;
 
       const video = document.createElement("video");
+
       video.preload = "auto";
       video.muted = true;
       video.playsInline = true;
       video.src = url;
+
       video.load();
     });
   }, [loadedVideos]);
@@ -269,6 +325,11 @@ export default function HeroSection() {
       id: index + 1,
       videoSrc: loadedVideos[index],
       imagePath: imagePaths[index],
+
+      // IMPORTANT:
+      // Use the Rasa ID instead of index + 1
+      eventId: rasaIdMap[imagePaths[index]],
+
       x,
       y,
     };
@@ -293,6 +354,7 @@ export default function HeroSection() {
             x={hex.x}
             y={hex.y}
             isMobile={isMobile}
+            eventId={hex.eventId}
           />
         ))}
       </div>
