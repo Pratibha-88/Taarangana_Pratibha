@@ -172,6 +172,9 @@ function TraditionalScene({
   const [curtainOpen, setCurtainOpen] =
     useState(false);
 
+  const [lightsVisible, setLightsVisible] =
+    useState(false);
+
   const [sceneIndex, setSceneIndex] =
     useState(0);
 
@@ -186,6 +189,7 @@ function TraditionalScene({
 
   const animationFrameRef =
     useRef(null);
+
 
   // =======================================================
   // LOAD TRADITIONAL ASSETS
@@ -233,6 +237,7 @@ function TraditionalScene({
       cancelled = true;
     };
   }, []);
+
 
   // =======================================================
   // START CAROUSEL ONLY AFTER TRADITIONAL ASSETS LOAD
@@ -283,8 +288,9 @@ function TraditionalScene({
     };
   }, [traditionalAssetsLoaded]);
 
+
   // =======================================================
-  // OPEN CURTAINS ONLY AFTER TRADITIONAL ASSETS LOAD
+  // OPEN CURTAINS → WAIT 2 SECONDS → LIGHTS ON
   // =======================================================
 
   useEffect(() => {
@@ -292,16 +298,39 @@ function TraditionalScene({
       return;
     }
 
-    // Traditional screen is now completely loaded.
+    // Start opening the curtains.
     setCurtainOpen(true);
 
-    const timer = setTimeout(() => {
+    /*
+     * HomeComp1.css:
+     *
+     * curtainLeft  2s
+     * curtainRight 2s
+     *
+     * Therefore the curtains are completely open
+     * after exactly 2000ms.
+     */
+
+    const lightsTimer = setTimeout(() => {
+      setLightsVisible(true);
+    }, 2000);
+
+
+    /*
+     * Navarasa text appears slightly after
+     * the lights.
+     */
+
+    const rasaTimer = setTimeout(() => {
       setRasaVisible(true);
-    }, 500);
+    }, 2500);
+
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(lightsTimer);
+      clearTimeout(rasaTimer);
     };
+
   }, [traditionalAssetsLoaded]);
 
   return (
@@ -335,31 +364,29 @@ function TraditionalScene({
                 i === sceneIndex
                   ? 3
                   : i === prevIndex
-                    ? 2
-                    : 1
+                  ? 2
+                  : 1
             }}
           />
         ))}
 
       </div>
-
       {/* ===================================================
           LIGHT RAYS
           =================================================== */}
 
-      <LightRays
-        color={
-          RASA_COLORS[sceneIndex]
-        }
-        intensity={0.7}
-      />
-
+      {lightsVisible && (
+        <LightRays
+          color={
+            RASA_COLORS[sceneIndex]
+          }
+          intensity={0.7}
+        />
+      )}
       {/* ===================================================
           NAVARASA LABEL
           =================================================== */}
-
       <div className="homecomp1-rasa-label">
-
         {rasaVisible && (
           <BlurText
             key={sceneIndex}
@@ -369,14 +396,10 @@ function TraditionalScene({
             direction="bottom"
           />
         )}
-
       </div>
 
       {/* ===================================================
           ETHEREFY BUTTON
-
-          Only appears after ALL modern assets
-          have successfully loaded.
           =================================================== */}
 
       {modernAssetsLoaded && (
@@ -397,6 +420,7 @@ function TraditionalScene({
         </div>
       )}
 
+
       {/* ===================================================
           CURTAINS
           =================================================== */}
@@ -408,27 +432,20 @@ function TraditionalScene({
             : ''
         }`}
       >
-
         <div className="homecomp1-curtain-left">
-
           <img
             src={curtainImg}
             alt=""
           />
-
         </div>
-
         <div className="homecomp1-curtain-right">
 
           <img
             src={curtainImg}
             alt=""
           />
-
         </div>
-
       </div>
-
     </div>
   );
 }
