@@ -3,12 +3,27 @@
    ========================================================= */
 
 .sponsi-container {
+  /*
+   * IMPORTANT:
+   * This container provides the reference width for cqw.
+   *
+   * 1cqw = 1% of this container's width.
+   */
+  container-type: inline-size;
+
   --nav-h: 64px;
 
   /*
-   * Desktop reference width = 1536px.
+   * 1536px reference design.
+   *
+   * At 1536px:
+   * 1cqw = 15.36px
+   * 0.0651041667cqw = 1px
+   *
+   * Therefore:
+   * calc(460 * var(--sp-k)) = 460px
    */
-  --sp-k: 100vw / 1536;
+  --sp-k: 0.0651041667cqw;
 
   --banner-w: 460;
   --cluster-w: 210;
@@ -18,7 +33,7 @@
   inset: 0;
 
   width: 100%;
-  height: 100vh;
+  height: 100%;
 
   margin: 0;
   padding: 0;
@@ -44,6 +59,12 @@
 
   scroll-snap-type: none;
   scroll-behavior: auto;
+
+  /*
+   * Stops the browser from compensating the
+   * position while the loop rebase happens.
+   */
+  overflow-anchor: none;
 
   -webkit-overflow-scrolling: touch;
 }
@@ -191,6 +212,13 @@
       var(--cluster-w) *
       var(--sp-k)
     );
+
+  /*
+   * Only allow the bottom 3/5 to be visible.
+   */
+  height: 60%;
+
+  overflow: hidden;
 }
 
 .left-cluster {
@@ -211,18 +239,58 @@
   transform: scaleX(-1);
 }
 
-.dangler-top {
+.dangler-top-wrapper {
   position: absolute;
 
   top: 0;
   left: 0;
 
-  display: block;
-
   width: 100%;
-  height: auto;
+  height: 60%;
+
+  overflow: hidden;
 
   z-index: 2;
+}
+
+.dangler-top {
+  position: absolute;
+
+  top: -40%;
+  left: 0;
+
+  display: block;
+
+  width: 110%;
+  height: auto;
+
+  /*
+   * Spins around its own centre,
+   * which sits off-screen above the viewport.
+   *
+   * Position, size and orientation stay
+   * untouched: rotation happens after
+   * layout, and starts at 0deg.
+   */
+  transform-origin: 50% 50%;
+
+  animation:
+    danglerTopSpin
+    20s
+    linear
+    infinite;
+
+  z-index: 3;
+}
+
+@keyframes danglerTopSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .dangler-row {
@@ -238,7 +306,7 @@
   align-items: flex-start;
   justify-content: center;
 
-  z-index: 1;
+  z-index: 2;
 }
 
 .dangler {
@@ -349,25 +417,40 @@
    MANDALA
    ========================================================= */
 
-.mandala-bottom {
+.mandala-bottom,
+.mandala-top {
   position: fixed;
 
-  top: 100%;
-
-  width:
-    calc(
-      514 *
-      var(--sp-k)
-    );
+  /*
+   * Percentage of the viewport width.
+   *
+   * No vw, no vh, no --sp-k.
+   */
+  width: 26%;
 
   height: auto;
 
   transform-origin: 50% 50%;
 
-  z-index: 3;
+  /*
+   * BOTTOM-MOST LAYER.
+   *
+   * 0 = mandala
+   * 2 = dangler 1, 2, 3
+   * 3 = dangler top
+   */
+  z-index: 0;
 
   pointer-events: none;
   user-select: none;
+}
+
+.mandala-bottom {
+  top: 100%;
+}
+
+.mandala-top {
+  top: 0;
 }
 
 .gear-spin-left {
@@ -416,6 +499,32 @@
 
 
 /* =========================================================
+   ONE CYCLE
+
+   The sections are rendered twice. Both copies are
+   pixel identical, which lets the scroll position be
+   moved by one full cycle without anything on screen
+   changing, so the carousel can loop forever.
+   ========================================================= */
+
+.sponsi-cycle {
+  position: relative;
+
+  width: 100%;
+  height: auto;
+}
+
+.sponsi-cycle-clone {
+  /*
+   * No extra gap, the second copy has to start exactly
+   * where the first one ends.
+   */
+  margin: 0;
+  padding: 0;
+}
+
+
+/* =========================================================
    SPONSOR PAGE
    ========================================================= */
 
@@ -439,6 +548,10 @@
 
   width: 100%;
 
+  /*
+   * Every section fills the viewport, so one full cycle
+   * is always taller than the scroll container.
+   */
   min-height:
     max(
       calc(
@@ -517,6 +630,8 @@
   aspect-ratio: var(--car);
 
   transform-origin: center top;
+
+  box-sizing: border-box;
 }
 
 
@@ -558,7 +673,10 @@
   height:
     clamp(
       400px,
-      40.36vw,
+      calc(
+        40.36 *
+        var(--sp-k)
+      ),
       620px
     );
 }
@@ -569,7 +687,7 @@
 
 .section-title-gold
 .sponsor-card.pos-center {
-  top: 21%;
+  top: 33%;
 
   left: 50.5%;
 
@@ -579,7 +697,7 @@
 
 .section-title-gold
 .sponsor-card.pos-left {
-  top: 52%;
+  top: 85%;
 
   left: 29.3%;
 
@@ -589,7 +707,7 @@
 
 .section-title-gold
 .sponsor-card.pos-right {
-  top: 52%;
+  top: 85%;
 
   left: 70.7%;
 
@@ -936,10 +1054,15 @@
      ------------------------------------------------------- */
 
   .sponsi-container {
-    --sp-k: 1;
 
-    --banner-w: 330px;
-    --cluster-w: 90px;
+    /*
+     * Mobile uses the original pixel sizes.
+     * 1px keeps calc(number * --sp-k) valid.
+     */
+    --sp-k: 1px;
+
+    --banner-w: 330;
+    --cluster-w: 90;
   }
 
 
@@ -987,7 +1110,7 @@
 
 
   /* -------------------------------------------------------
-     EVERY SECTION IS PART OF THE SAME PAGE
+     EVERY SECTION
      ------------------------------------------------------- */
 
   .sponsor-section {
@@ -1032,9 +1155,6 @@
 
   /* -------------------------------------------------------
      MOBILE CARD RESET
-     
-     This is the important part.
-     Desktop absolute positions are completely removed.
      ------------------------------------------------------- */
 
   .sponsor-card {
@@ -1097,8 +1217,6 @@
   }
 
 
-  /* Title sponsor */
-
   .section-title-gold
   .title-card {
 
@@ -1115,10 +1233,10 @@
         calc(100% - 20px),
         300px
       );
+
+    height: auto;
   }
 
-
-  /* Gold 1 */
 
   .section-title-gold
   .gold-card.pos-left {
@@ -1132,10 +1250,10 @@
         calc(100% - 8px),
         180px
       );
+
+    height: auto;
   }
 
-
-  /* Gold 2 */
 
   .section-title-gold
   .gold-card.pos-right {
@@ -1149,6 +1267,8 @@
         calc(100% - 8px),
         180px
       );
+
+    height: auto;
   }
 
 
@@ -1183,6 +1303,8 @@
         calc(100% - 8px),
         180px
       );
+
+    height: auto;
   }
 
 
@@ -1244,6 +1366,8 @@
         calc(100% - 8px),
         185px
       );
+
+    height: auto;
   }
 
 
@@ -1305,6 +1429,8 @@
         calc(100% - 8px),
         180px
       );
+
+    height: auto;
   }
 
 
@@ -1402,8 +1528,11 @@
 
     width:
       min(
-        var(--banner-w),
-        70vw
+        calc(
+          var(--banner-w) *
+          var(--sp-k)
+        ),
+        70%
       );
   }
 
@@ -1419,8 +1548,9 @@
   }
 
 
-  .mandala-bottom {
-    width: 210px;
+  .mandala-bottom,
+  .mandala-top {
+    width: 48%;
   }
 
 
@@ -1441,6 +1571,84 @@
 @media (min-width: 2200px) {
 
   .sponsi-container {
-    --sp-k: 1.4;
+
+    /*
+     * Original behavior:
+     * --sp-k: 1.4
+     *
+     * Keep the same 1.4x scale, but as a length.
+     */
+    --sp-k: 1.4px;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 420px) {
+
+  .sponsor-section {
+    padding-top: 155px;
+    padding-bottom: 65px;
+  }
+
+  .section-title-gold .tree-node,
+  .section-title-silver .tree-node,
+  .section-title-bronze .tree-node,
+  .section-title-category .tree-node {
+    gap: 22px 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .section-title-gold
+  .title-card {
+    width:
+      min(
+        calc(100% - 10px),
+        280px
+      );
+  }
+
+  .section-title-gold
+  .gold-card.pos-left,
+  .section-title-gold
+  .gold-card.pos-right {
+    width:
+      min(
+        calc(100% - 4px),
+        160px
+      );
+  }
+
+  .section-title-silver
+  .sponsor-card,
+  .section-title-bronze
+  .sponsor-card,
+  .section-title-category
+  .sponsor-card {
+    width:
+      min(
+        calc(100% - 4px),
+        165px
+      );
+  }
+}
+
+
+/* =========================================================
+   LANDSCAPE PHONES / SMALL TABLETS
+   ========================================================= */
+
+@media (min-width: 901px) and (max-height: 700px) {
+
+  .sponsor-section {
+    padding-top:
+      calc(
+        110 *
+        var(--sp-k)
+      );
   }
 }

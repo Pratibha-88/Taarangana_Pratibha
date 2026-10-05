@@ -33,8 +33,7 @@ import dangler2 from '../../assets/Dangler 2.webp';
 import dangler3 from '../../assets/Dangler 3.webp';
 import danglerTop from '../../assets/Dangler Top.webp';
 
-import mandalaBottom from '../../assets/Mandala Bottom.webp';
-
+import mandalaBottom from '../../assets/Mandala.webp';
 import demo1 from '../../assets/Demo 1.webp';
 import demo2 from '../../assets/Demo 2.webp';
 import demo3 from '../../assets/Demo 3.webp';
@@ -145,6 +144,20 @@ const TIERS = [
 
 const AUTOSCROLL_INTERVAL = 5000;
 
+const TOUCH_RESUME_DELAY = 800;
+
+const SCROLL_SETTLE_TOLERANCE = 1.5;
+
+const SMOOTH_SCROLL_TIMEOUT = 1800;
+
+/*
+ * The content is rendered one extra time so that
+ * after the last section the first one can slide
+ * back up from the bottom of the viewport instead
+ * of jumping.
+ */
+const CYCLES = [0, 1];
+
 
 /* =========================================================
    SPONSOR CARD
@@ -195,12 +208,14 @@ function SponsorSection({
   sectionClass,
   cards,
   type,
-  sectionIndex
+  sectionIndex,
+  cycle = 0
 }) {
   return (
     <section
       className={`sponsor-section ${sectionClass}`}
       data-section={sectionIndex}
+      data-cycle={cycle}
     >
 
       <div
@@ -394,10 +409,20 @@ export default function Sponsi() {
 
   /* =======================================================
      AUTO SCROLL
-     
-     DESKTOP ONLY.
-     
-     Mobile has NO timer and NO automatic scrolling.
+
+     RUNS EVERYWHERE, DESKTOP AND MOBILE.
+
+     The sections are rendered TWICE, so the first one
+     can slide up from the bottom after the last one
+     instead of jumping.
+
+     The position is always rebased back into the first
+     copy, which is invisible because both copies are
+     pixel identical.
+
+     Auto scroll pauses while a sponsor card is hovered
+     or touched, and it resumes from the exact position
+     the user left behind.
      ======================================================= */
 
   useEffect(() => {
@@ -409,19 +434,25 @@ export default function Sponsi() {
     }
 
 
-    const mediaQuery =
-      window.matchMedia(
-        '(max-width: 900px)'
-      );
-
-
     let timer = null;
+
+    let resumeTimer = null;
 
     let isPaused = false;
 
+    let scrollTarget = null;
+
+    let scrollTargetAt = 0;
+
+    let touchOnCard = false;
+
+    let touchMoved = false;
+
+    let lastTouchAt = 0;
+
 
     /* -----------------------------------------------------
-       CLEANUP TIMER
+       TIMERS
        ----------------------------------------------------- */
 
     const clearAutoScroll = () => {
@@ -436,128 +467,209 @@ export default function Sponsi() {
     };
 
 
-    /* -----------------------------------------------------
-       FIND CURRENT SECTION
-       ----------------------------------------------------- */
+    const clearResumeTimer = () => {
 
-    const advance = () => {
+      if (resumeTimer !== null) {
 
-      /*
-       * Absolute safety check.
-       *
-       * Even if something triggers advance later,
-       * it can NEVER scroll on mobile.
-       */
-      if (
-        mediaQuery.matches ||
-        isPaused
-      ) {
-        return;
+        clearTimeout(resumeTimer);
+
+        resumeTimer = null;
       }
-
-
-      const sectionElements =
-        Array.from(
-          el.querySelectorAll(
-            '.sponsor-section'
-          )
-        );
-
-
-      if (!sectionElements.length) {
-        return;
-      }
-
-
-      let currentIndex = 0;
-
-      let smallestDistance =
-        Infinity;
-
-
-      sectionElements.forEach(
-        (section, index) => {
-
-          const distance =
-            Math.abs(
-              section.offsetTop -
-              el.scrollTop
-            );
-
-
-          if (
-            distance <
-            smallestDistance
-          ) {
-
-            smallestDistance =
-              distance;
-
-            currentIndex =
-              index;
-          }
-
-        }
-      );
-
-
-      const nextIndex =
-        (
-          currentIndex + 1
-        ) %
-        sectionElements.length;
-
-
-      const target =
-        sectionElements[nextIndex];
-
-
-      if (!target) {
-        return;
-      }
-
-
-      el.scrollTo({
-        top: target.offsetTop,
-        behavior: 'smooth'
-      });
 
     };
 
 
     /* -----------------------------------------------------
-       START DESKTOP TIMER
+       CYCLE GEOMETRY
        ----------------------------------------------------- */
 
-    const startTimer = () => {
+    const getTop = (node) => {
 
-      clearAutoScroll();
-
-
-      /*
-       * NEVER start timer on mobile.
-       */
-      if (mediaQuery.matches) {
-        return;
+      if (!node) {
+        return 0;
       }
 
+      return (
+        node.getBoundingClientRect().top -
+        el.getBoundingClientRect().top +
+        el.scrollTop
+      );
+
+    };
+
+
+    const getCycleSections = (cycle) =>
+
+      Array.from(
+        el.querySelectorAll(
+          `.sponsor-section[data-cycle="${cycle}"]`
+        )
+      );
+
+
+    /*
+     * Height of one full cycle.
+     *
+     * Content at any position and at that position
+     * plus one cycle height are pixel identical,
+     * which is what makes the rebase invisible.
+     */
+    const getCycleHeight = () => {
+
+      const first = getCycleSections(0)[0];
+
+      const second = getCycleSections(1)[0];
+
+      if (!first || !second) {
+        return 0;
+      }
+
+      return getTop(second) - getTop(first);
+
+    };
+
+
+    /*
+     * Pulls the position back into the first copy.
+     *
+     * The visible content never changes.
+     */
+    const rebase = () => {
+
+      const height = getCycleHeight();
+
+      if (
+        height > 0 &&
+        el.scrollTop >= height - 1
+      ) {
+
+        el.scrollTop =
+          el.scrollTop - height;
+
+      }
+
+    };
+
+
+    /*
+     * Section closest to the current position.
+     *
+     * Recomputed on every step, so if the user scrolled
+     * below the current section the carousel carries on
+     * from where the user is.
+     */
+    const findCurrentIndex = (tops) => {
+
+      let currentIndex = 0;
+
+      let smallestDistance = Infinity;
+
+      tops.forEach((top, index) => {
+
+        const distance =
+          Math.abs(top - el.scrollTop);
+
+        if (
+          distance <
+          smallestDistance
+        ) {
+
+          smallestDistance = distance;
+
+          currentIndex = index;
+        }
+
+      });
+
+      return currentIndex;
+
+    };
+
+
+    /* -----------------------------------------------------
+       ADVANCE
+       ----------------------------------------------------- */
+
+    const advance = () => {
 
       if (isPaused) {
         return;
       }
 
 
+      const sections = getCycleSections(0);
+
+      if (!sections.length) {
+        return;
+      }
+
+
+      /*
+       * Always work from a position inside the first
+       * copy, so the next step is always reachable.
+       */
+      rebase();
+
+
+      const tops = sections.map(getTop);
+
+      const currentIndex = findCurrentIndex(tops);
+
+      const isWrap =
+        currentIndex === sections.length - 1;
+
+      const nextIndex =
+        isWrap ? 0 : currentIndex + 1;
+
+
+      /*
+       * FROM THE LAST SECTION:
+       *
+       * the first section of the next copy is the
+       * target, so it slides up from the bottom
+       * instead of jumping down from the top.
+       */
+      const target =
+        tops[nextIndex] +
+        (isWrap ? getCycleHeight() : 0);
+
+      const maxScroll =
+        el.scrollHeight - el.clientHeight;
+
+      const finalTarget =
+        Math.min(target, maxScroll);
+
+      if (
+        finalTarget <= el.scrollTop
+      ) {
+        return;
+      }
+
+      scrollTarget = finalTarget;
+
+      scrollTargetAt = Date.now();
+
+      el.scrollTo({
+        top: finalTarget,
+        behavior: 'smooth'
+      });
+
+    };
+
+
+    const startTimer = () => {
+
+      clearAutoScroll();
+
+      if (isPaused) {
+        return;
+      }
+
       timer = setTimeout(() => {
 
-        if (
-          !mediaQuery.matches &&
-          !isPaused
-        ) {
+        advance();
 
-          advance();
-
-          startTimer();
-        }
+        startTimer();
 
       }, AUTOSCROLL_INTERVAL);
 
@@ -565,152 +677,225 @@ export default function Sponsi() {
 
 
     /* -----------------------------------------------------
-       MOUSE ENTER
+       PAUSE / RESUME
        ----------------------------------------------------- */
 
-    const handleMouseEnter = () => {
+    const pauseAutoScroll = () => {
 
       isPaused = true;
 
       clearAutoScroll();
 
+      clearResumeTimer();
+
     };
 
 
-    /* -----------------------------------------------------
-       MOUSE LEAVE
-       ----------------------------------------------------- */
+    const resumeAutoScroll = (delay = 0) => {
 
-    const handleMouseLeave = () => {
+      clearResumeTimer();
 
-      isPaused = false;
+      if (delay <= 0) {
 
+        isPaused = false;
 
-      if (!mediaQuery.matches) {
         startTimer();
-      }
 
-    };
-
-
-    /* -----------------------------------------------------
-       SETUP CARD EVENTS
-       ----------------------------------------------------- */
-
-    const setupCardEvents = () => {
-
-      const sponsorCards =
-        el.querySelectorAll(
-          '.sponsor-card'
-        );
-
-
-      sponsorCards.forEach(
-        (card) => {
-
-          card.addEventListener(
-            'mouseenter',
-            handleMouseEnter
-          );
-
-          card.addEventListener(
-            'mouseleave',
-            handleMouseLeave
-          );
-
-        }
-      );
-
-
-      return sponsorCards;
-    };
-
-
-    /* -----------------------------------------------------
-       REMOVE CARD EVENTS
-       ----------------------------------------------------- */
-
-    const removeCardEvents = () => {
-
-      const sponsorCards =
-        el.querySelectorAll(
-          '.sponsor-card'
-        );
-
-
-      sponsorCards.forEach(
-        (card) => {
-
-          card.removeEventListener(
-            'mouseenter',
-            handleMouseEnter
-          );
-
-          card.removeEventListener(
-            'mouseleave',
-            handleMouseLeave
-          );
-
-        }
-      );
-
-    };
-
-
-    /* -----------------------------------------------------
-       BREAKPOINT CHANGE
-       ----------------------------------------------------- */
-
-    const handleBreakpointChange = () => {
-
-      /*
-       * Always stop the old timer first.
-       */
-      clearAutoScroll();
-
-      isPaused = false;
-
-
-      /*
-       * Mobile:
-       * no timer.
-       */
-      if (mediaQuery.matches) {
         return;
       }
 
+      resumeTimer = setTimeout(() => {
 
-      /*
-       * Desktop:
-       * restart timer.
-       */
-      startTimer();
+        resumeTimer = null;
+
+        isPaused = false;
+
+        startTimer();
+
+      }, delay);
 
     };
 
 
     /* -----------------------------------------------------
-       INITIAL SETUP
+       HOVER
+       ----------------------------------------------------- */
+
+    const isRecentTouch = () =>
+
+      Date.now() - lastTouchAt < 1200;
+
+
+    const handleCardEnter = () => {
+
+      if (isRecentTouch()) {
+        return;
+      }
+
+      pauseAutoScroll();
+
+    };
+
+
+    const handleCardLeave = () => {
+
+      if (isRecentTouch()) {
+        return;
+      }
+
+      resumeAutoScroll(0);
+
+    };
+
+
+    /* -----------------------------------------------------
+       TOUCH
+       ----------------------------------------------------- */
+
+    const isCardTarget = (target) =>
+
+      !!(
+        target &&
+        target.closest &&
+        target.closest('.sponsor-card')
+      );
+
+
+    const handleTouchStart = (event) => {
+
+      lastTouchAt = Date.now();
+
+      touchMoved = false;
+
+      touchOnCard =
+        isCardTarget(event.target);
+
+      pauseAutoScroll();
+
+    };
+
+
+    const handleTouchMove = () => {
+
+      touchMoved = true;
+
+    };
+
+
+    const handleTouchEnd = () => {
+
+      const wasOnCard = touchOnCard;
+
+      touchOnCard = false;
+
+
+      /*
+       * A tap on a card keeps the carousel paused
+       * until the user touches somewhere else.
+       */
+      if (wasOnCard && !touchMoved) {
+        return;
+      }
+
+      resumeAutoScroll(TOUCH_RESUME_DELAY);
+
+    };
+
+
+    /* -----------------------------------------------------
+       SCROLL
+       ----------------------------------------------------- */
+
+    const handleScroll = () => {
+
+      /*
+       * A smooth scroll has landed, or it was
+       * interrupted and is no longer worth waiting
+       * for.
+       */
+      if (
+        scrollTarget !== null &&
+        (
+          Math.abs(el.scrollTop - scrollTarget) <
+            SCROLL_SETTLE_TOLERANCE ||
+          Date.now() - scrollTargetAt >
+            SMOOTH_SCROLL_TIMEOUT
+        )
+      ) {
+
+        scrollTarget = null;
+
+      }
+
+
+      /*
+       * Mid animation the rebase waits, so a running
+       * smooth scroll is never cut short.
+       */
+      if (scrollTarget === null) {
+        rebase();
+      }
+
+    };
+
+
+    /* -----------------------------------------------------
+       SETUP
        ----------------------------------------------------- */
 
     const sponsorCards =
-      setupCardEvents();
+      Array.from(
+        el.querySelectorAll('.sponsor-card')
+      );
 
 
-    /*
-     * IMPORTANT:
-     *
-     * If this is a phone, this does nothing.
-     */
-    if (!mediaQuery.matches) {
-      startTimer();
-    }
+    sponsorCards.forEach((card) => {
+
+      card.addEventListener(
+        'mouseenter',
+        handleCardEnter
+      );
+
+      card.addEventListener(
+        'mouseleave',
+        handleCardLeave
+      );
+
+    });
 
 
-    mediaQuery.addEventListener(
-      'change',
-      handleBreakpointChange
+    el.addEventListener(
+      'touchstart',
+      handleTouchStart,
+      { passive: true }
     );
+
+    el.addEventListener(
+      'touchmove',
+      handleTouchMove,
+      { passive: true }
+    );
+
+    el.addEventListener(
+      'touchend',
+      handleTouchEnd,
+      { passive: true }
+    );
+
+    el.addEventListener(
+      'touchcancel',
+      handleTouchEnd,
+      { passive: true }
+    );
+
+    el.addEventListener(
+      'scroll',
+      handleScroll,
+      { passive: true }
+    );
+
+
+    startTimer();
 
 
     /* -----------------------------------------------------
@@ -721,11 +906,47 @@ export default function Sponsi() {
 
       clearAutoScroll();
 
-      removeCardEvents();
+      clearResumeTimer();
 
-      mediaQuery.removeEventListener(
-        'change',
-        handleBreakpointChange
+
+      sponsorCards.forEach((card) => {
+
+        card.removeEventListener(
+          'mouseenter',
+          handleCardEnter
+        );
+
+        card.removeEventListener(
+          'mouseleave',
+          handleCardLeave
+        );
+
+      });
+
+
+      el.removeEventListener(
+        'touchstart',
+        handleTouchStart
+      );
+
+      el.removeEventListener(
+        'touchmove',
+        handleTouchMove
+      );
+
+      el.removeEventListener(
+        'touchend',
+        handleTouchEnd
+      );
+
+      el.removeEventListener(
+        'touchcancel',
+        handleTouchEnd
+      );
+
+      el.removeEventListener(
+        'scroll',
+        handleScroll
       );
 
     };
@@ -777,6 +998,28 @@ export default function Sponsi() {
           <DanglerCluster side="left" />
 
           <DanglerCluster side="right" />
+
+
+          <img
+            src={mandalaBottom}
+            alt=""
+            className="
+              mandala-top
+              gear-spin-left
+            "
+            draggable="false"
+          />
+
+
+          <img
+            src={mandalaBottom}
+            alt=""
+            className="
+              mandala-top
+              gear-spin-right
+            "
+            draggable="false"
+          />
 
 
           <img
@@ -850,31 +1093,57 @@ export default function Sponsi() {
 
         {/* -----------------------------------------------
             ALL SPONSOR CONTENT
+
+            Rendered twice so the carousel can loop
+            downward forever.
             ----------------------------------------------- */}
 
         <main className="sponsi-page">
 
-          {sections.map(
-            (section, index) => (
+          {CYCLES.map((cycle) => (
 
-              <SponsorSection
-                key={section.type}
-                sectionClass={
-                  section.sectionClass
-                }
-                cards={
-                  section.cards
-                }
-                type={
-                  section.type
-                }
-                sectionIndex={
-                  index
-                }
-              />
+            <div
+              key={cycle}
+              className={
+                cycle === 0
+                  ? 'sponsi-cycle'
+                  : 'sponsi-cycle sponsi-cycle-clone'
+              }
+              aria-hidden={
+                cycle === 0
+                  ? undefined
+                  : 'true'
+              }
+            >
 
-            )
-          )}
+              {sections.map(
+                (section, index) => (
+
+                  <SponsorSection
+                    key={section.type}
+                    sectionClass={
+                      section.sectionClass
+                    }
+                    cards={
+                      section.cards
+                    }
+                    type={
+                      section.type
+                    }
+                    sectionIndex={
+                      index
+                    }
+                    cycle={
+                      cycle
+                    }
+                  />
+
+                )
+              )}
+
+            </div>
+
+          ))}
 
         </main>
 
