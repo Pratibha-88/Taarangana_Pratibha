@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import HomePage from './Pages/Home/Home';
 import ItineraryPage from './Pages/Itinerary/Itinerary';
-import TeamPage from './Pages/Team/Team';
+import TeamPage from './Pages/Team/team';
 import Events from './Pages/Events/Events';
 import Sponsi from './Pages/Sponsi/Sponsi';
 
