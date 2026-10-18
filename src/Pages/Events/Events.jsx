@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import HeroSection from "../../components/Events/HeroSection";
-import RasaSection from "../../components/Events/RasaSection";
-import Galaxy from "../../components/Events/Galaxy";
+import HeroSection from "../../Components/Events/HeroSection";
+import RasaSection from "../../Components/Events/RasaSection";
+import Galaxy from "../../Components/Events/Galaxy";
 import bg from "../../assets/Background_Events.webp";
-import SplashCursor from "../../components/SplashCursor/SplashCursor"; // Adjust path if needed
+import SplashCursor from "../../Components/SplashCursor/SplashCursor"; // Adjust path if needed
 import "./Events.css";
 import Navbar from '../../Components/Navbar/Navbar';
 
